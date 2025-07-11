@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Interface (LIFS-TARS)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface_LIFS_1.0</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+  <div class="container">
+        <h1>Dados de deposição da amostra</h1>
+     <div id="inputs">
+            <!-- 10 caixas de texto -->
+            <textarea id="nomeArquivo" placeholder="Nome da amostra"></textarea>
+            <textarea placeholder="Materiais"></textarea>
+            <textarea placeholder="Temp. Inicial"></textarea>
+            <textarea placeholder="Temp. Final"></textarea>
+            <textarea placeholder="Fonte de energia"></textarea>
+            <textarea placeholder="Potência"></textarea>
+            <textarea placeholder="P.Base Inicial"></textarea>
+            <textarea placeholder="P.Base Final"></textarea>
+            <textarea placeholder="P.Ar Inicial"></textarea>
+            <textarea placeholder="P.Ar Final"></textarea>
+	          <textarea placeholder="Flux.Ar Inicial"></textarea>
+            <textarea placeholder="Flux.Ar Final"></textarea>
+            <textarea placeholder="P.O2 Inicial"></textarea>
+            <textarea placeholder="P.O2 Final"></textarea>
+            <textarea placeholder="P.tot Inicial"></textarea>
+            <textarea placeholder="P.tot Final"></textarea>
+            <textarea placeholder="Tempo dep."></textarea>
+            <textarea placeholder="Distância"></textarea>
+            <textarea placeholder="Alvo"></textarea>
+            <textarea placeholder="Frequência"></textarea>
+            <textarea placeholder="TP"></textarea>
+            <textarea placeholder="RSH e RLIM"></textarea>
+            <textarea class="observacao" placeholder="Observações"></textarea>
+            <!-- Fazer tabela com opção de add mais colunas para as caixas -->
+    </div>
+
+    <div id="controle" class="controls">
+            <select id="reator-select">
+                <option value="reator1">Reator 1</option>
+                <option value="reator2">Reator 2</option>
+            </select>
+    </div>
+<div class="tabelas">
+ <div class="tabela scroll-tabela" id="tabela1">
+  <h2>Parametros de deposicao</h2>
+    <table id="tabela1">
+      <tbody>
+        <tr>
+         <th>Tempo [min]</th>
+         <td><input type="text"></td>
+        </tr>
+        <tr>
+          <th>Vdc [V]</th>
+          <td><input type="text"></td>
+        </tr>
+        <tr>
+          <th>Idc [mA]</th>
+          <td><input type="text"></td>
+        </tr>
+        <tr>
+          <th>Vos [V]</th>
+          <td><input type="text"></td>
+        </tr>
+        <tr>
+          <th>Vsh [V]</th>
+          <td><input type="text"></td>
+        </tr>
+        <tr>
+          <th>Delay [us]</th>
+          <td><input type="text"></td>
+        </tr>
+      </tbody>
+    </table>
+        <button onclick="addColuna('tabela1')">Adicionar Coluna</button>
+        <button onclick="removerColuna('tabela1')">Remover Coluna</button>
+   </div>
+     <div class="tabela scroll-tabela" id="tabela2">
+  <h2>Parametros do FM</h2>
+  <table id="tabela2">
+    <thead>
+      <tr>
+        <th>Número da amostra</th>
+        <th>Espessura [Å]</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><input type="text"></td>
+        <td><input type="text"></td>
+      </tr>
+    </tbody>
+  </table>
+  <button onclick="addLinha('tabela2')">Adicionar Linha</button>
+  <button onclick="removerLinha('tabela2')">Remover Linha</button>
+</div>
+
+<div class="tabela scroll-tabela" id="tabela3">
+  <h2>Parametros 4 pontas</h2>
+  <table id="tabela3">
+    <thead>
+      <tr>
+        <th>Número da amostra</th>
+        <th>Resistência [Ohm]</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><input type="text"></td>
+        <td><input type="text"></td>
+      </tr>
+    </tbody>
+  </table>
+  <button onclick="addLinha('tabela3')">Adicionar Linha</button>
+  <button onclick="removerLinha('tabela3')">Remover Linha</button>
+</div>
+ <button id="btnSalvar" style="display: none;">Salvar</button>
+ <button id="btnGerar" onclick="gerarPDF()">Gerar PDF</button>
+ <button onclick="window.location.href='/'">Voltar</button>
+    </div>
+   </div>    
+  </div>
+<script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
