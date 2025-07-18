@@ -6,7 +6,7 @@ async function gerarPDF() {
 
   const tabelas = coletarDadosDoFormulario().tabelas;
 
-  const response = await fetch('/pdf', {
+  const response = await fetch('/api/pdf', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -85,7 +85,7 @@ async function carregarArquivos() {
   const lista = document.getElementById('lista-arquivos');
   lista.innerHTML = "Carregando...";
 
-  const res = await fetch(`/arquivos/${reator}`);
+  const res = await fetch(`/api/arquivos/${reator}`);
   const arquivos = await res.json();
 
   lista.innerHTML = arquivos.length === 0 ? "Nenhum arquivo encontrado" : "";
@@ -112,7 +112,7 @@ async function carregarArquivos() {
     botaoRemover.onclick = async () => {
         const confirmar = confirm(`Tem certeza que deseja remover "${nome}"?`);
         if (confirmar) {
-            const response = await fetch(`/remover/${reator}/${nome}`, { method: 'DELETE' });
+            const response = await fetch(`/api/remover/${reator}/${nome}`, { method: 'DELETE' });
             if (response.ok) {
                 alert("Arquivo removido com sucesso.");
                 carregarArquivos();
@@ -197,7 +197,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     controleReator.style.display = "none";
 
     try {
-      const res = await fetch(`/json/${reator}/${arquivo}`);
+      const res = await fetch(`/api/json/${reator}/${arquivo}`);
       const dados = await res.json();
       const valores = dados.text.split('\n');
       const campos = document.querySelectorAll("#inputs textarea");
@@ -247,7 +247,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     botaoSalvar.onclick = async () => {
       const dadosAtualizados = coletarDadosDoFormulario();
       console.log("JSON sendo enviado:", dadosAtualizados); // útil pra debug
-      await fetch(`/salvar_pdf/${reator}/${arquivo}`, {
+      await fetch(`/api/salvar_pdf/${reator}/${arquivo}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(dadosAtualizados)

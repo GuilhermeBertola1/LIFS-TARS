@@ -101,7 +101,7 @@
 
             const link = document.createElement('a');
             const caminhoRelativo = caminhoAtual ? `${caminhoAtual}/${item.nome}` : item.nome;
-            link.href = item.tipo === 'pasta' ? '#' : `/arquivos/${encodeURIComponent(caminhoRelativo)}`;
+            link.href = item.tipo === 'pasta' ? '#' : `/api/arquivos/${encodeURIComponent(caminhoRelativo)}`;
             link.textContent = item.nome;
             link.target = '_blank';
 

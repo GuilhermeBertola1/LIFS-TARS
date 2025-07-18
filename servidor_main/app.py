@@ -15,8 +15,8 @@ logging.basicConfig(level=logging.DEBUG)
 app = Flask(__name__)
 
 DIRETORIOS_REATORES = {  ################################################################ MODIFICADO ########################################
-    "reator1": "dados/reator1",
-    "reator2": "dados/reator2"
+    "reator1": "/srv/dev-disk-by-uuid-b49b7959-96cf-44c4-a29b-b17569457647/REATOR_1/",
+    "reator2": "/srv/dev-disk-by-uuid-10efba6b-eb4d-408a-9898-a69920d91452/REATOR_2/"
 } ###########################################################################################################################################
 
 def salvar_json(diretorio, nome_arquivo, dados):
@@ -336,19 +336,8 @@ def remover_arquivo(reator, nome_arquivo):
 ####################################################################TESTE########################################################################
 BASE_DIR = os.path.abspath("uploads")
 os.makedirs(BASE_DIR, exist_ok=True)
-@app.route('/')
-def home():
-    return render_template('index.html')
 
-@app.route('/arquivos.html')
-def arquivos():
-    return render_template('arquivos.html')
-
-@app.route('/gerador.html')
-def ger():
-    return render_template('gerador.html')
-
-@app.route('/api/listar')
+@app.route('/listar')
 def listar():
     caminho = request.args.get('caminho', '').lstrip('/')
     full_path = os.path.join(BASE_DIR, caminho)
@@ -362,7 +351,7 @@ def listar():
         itens.append({'nome': nome, 'tipo': tipo})
     return jsonify(itens)
 
-@app.route('/api/upload', methods=['POST'])
+@app.route('/upload', methods=['POST'])
 def upload():
     caminho = request.form.get('caminho', '').lstrip('/')
     full_path = os.path.join(BASE_DIR, caminho)
@@ -385,7 +374,7 @@ def upload():
 
     return '', 204
 
-@app.route('/api/criar-pasta', methods=['POST'])
+@app.route('/criar-pasta', methods=['POST'])
 def criar_pasta():
     data = request.get_json()
     nome = secure_filename(data['nome'])
@@ -394,7 +383,7 @@ def criar_pasta():
     os.makedirs(full_path, exist_ok=True)
     return '', 204
 
-@app.route('/api/remover', methods=['POST'])
+@app.route('/remover', methods=['POST'])
 def remover():
     data = request.get_json()
     nome = data['nome']
