@@ -1,0 +1,136 @@
+<!-- arquivos.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Interface (LIFS-TARS)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container1">
+    <h1>Arquivos Gerais</h1>
+
+    <form id="upload-form" enctype="multipart/form-data">
+      <input type="file" name="arquivo" multiple>
+      <button type="submit">Upload</button>
+    </form>
+
+    <input type="text" id="nova-pasta" placeholder="Nome da nova pasta" />
+    <button onclick="criarPasta()">Criar Pasta</button>
+
+    <div id="caminho-atual"></div>
+    <div class="file-list" id="lista-arquivos"></div>
+
+    <button onclick="voltarParaInicio()">Pagina inicial</button>
+    <button onclick="voltarDiretorio()">Voltar Diretorio</button>
+  </div>
+
+  <script>
+    let caminhoAtual = 'main';
+
+    document.getElementById('upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      formData.append('caminho', caminhoAtual);
+      await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+      e.target.querySelector('input[type="file"]').value = '';
+      listarArquivos();
+    });
+
+    function criarPasta() {
+      const nome = document.getElementById('nova-pasta').value.trim();
+      if (!nome) return alert('Digite um nome para a pasta.');
+      fetch('/api/criar-pasta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, caminho: caminhoAtual })
+      }).then(() => {
+        document.getElementById('nova-pasta').value = '';
+        listarArquivos();
+      }).catch(() => alert('Erro ao criar pasta!'));
+    }
+
+
+    function entrarDiretorio(nome) {
+      caminhoAtual += `/${nome}`;
+      listarArquivos();
+    }
+
+    function voltarDiretorio() {
+      if (!caminhoAtual || caminhoAtual === "main") return;
+
+      const partes = caminhoAtual.split('/');
+      partes.pop();
+      caminhoAtual = partes.join('/');
+      listarArquivos();
+    }
+
+    function voltarParaInicio() {
+      window.location.href = "/";
+    }
+
+    function removerArquivo(nome) {
+      const confirmar = confirm(`Tem certeza que deseja remover "${nome}"?`);
+      if (!confirmar) return;
+      fetch('/api/remover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nome, caminho: caminhoAtual })
+      }).then(() => {
+        listarArquivos();
+      }).catch(() => {
+        alert("Erro ao remover o item.");
+      });
+    }
+
+    function listarArquivos() {
+      document.getElementById('caminho-atual').innerText = 'Caminho: /' + caminhoAtual;
+      fetch(`/api/listar?caminho=${encodeURIComponent(caminhoAtual)}`)
+        .then(res => res.json())
+        .then(dados => {
+          const lista = document.getElementById('lista-arquivos');
+          lista.innerHTML = '';
+          dados.forEach(item => {
+            const div = document.createElement('div');
+            const botao = document.createElement('button');
+            botao.textContent = 'Remover';
+            botao.onclick = () => removerArquivo(item.nome);
+
+            const link = document.createElement('a');
+            const caminhoRelativo = caminhoAtual ? `${caminhoAtual}/${item.nome}` : item.nome;
+            link.href = item.tipo === 'pasta' ? '#' : `/api/arquivos/${encodeURIComponent(caminhoRelativo)}`;
+            link.textContent = item.nome;
+            link.target = '_blank';
+
+            if (item.tipo === 'pasta') {
+              link.onclick = (event) => {
+                event.preventDefault();
+                entrarDiretorio(item.nome);
+              }
+            }
+
+            div.appendChild(link);
+            div.appendChild(botao);
+            lista.appendChild(div);
+          });
+
+          const botaoPaginaInicial = document.querySelector('button[onclick="voltarParaInicio()"]');
+          const botaoVoltarDiretorio = document.querySelector('button[onclick="voltarDiretorio()"]');
+
+          if (caminhoAtual === "main") {
+            botaoPaginaInicial.style.display = "inline-block";
+            botaoVoltarDiretorio.style.display = "none";
+          } else {
+            botaoPaginaInicial.style.display = "none";
+            botaoVoltarDiretorio.style.display = "inline-block";
+          }
+        });
+    }
+
+    listarArquivos();
+  </script>
+</body>
+</html>

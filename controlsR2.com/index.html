@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Painel de Controle - Reator 2</title>
+  <script src="socket.io.min.js"></script>
+  <script src="chart.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <h1>Monitoramento do Reator 2</h1>
+
+  <p><b>Temperatura:</b> <span id="temp">--</span> °C</p>
+  <p><b>Pressão:</b> <span id="pressao">--</span> atm</p>
+  <p><b>Espessura:</b> <span id="espessura">--</span> Ang</p>
+  <p><b>Temperatura da agua:</b> <span id="tempagua">--</span> °C</p>
+        <div style"margin-top: 20px">
+        <p><b>Status do Espectrômetro:</b>
+          <button id="statusBtn" style="padding:5px 15px; border:none; border-radius:6px; color:white; background:red;">
+            Offline
+          </button>
+        </p>
+        </div>
+  <button onclick="enviarComando('ligar')">Ligar</button>
+  <button onclick="enviarComando('desligar')">Desligar</button>
+
+  <div class="graficos-container">
+    <canvas id="graficoTemp"></canvas>
+    <canvas id="graficoPressao"></canvas>
+    <canvas id="graficoEspe"></canvas>
+    <canvas id="graficoTempAgua"></canvas>
+    <canvas id="graficoEspectro"></canvas>
+  </div>
+
+        <div style="margin-top: 20px; text-align:center;">
+          <label for="lambdaMin">λ mín: </label>
+          <input type="number" id="lambdaMin" value="400" step="1">
+          <label for="lambdaMax">λ máx: </label>
+          <input type="number" id="lambdaMax" value="700" step="1">
+          <label for="framesSomar">Frames a acumular: </label>
+          <input type="number" id="framesSomar" value="2" min="1" step="1">
+          <button onclick="aplicarFaixa()">Aplicar</button>
+        </div>
+
+  <div style="margin-top: 20px; text-align:center;">
+    <label for="fatorSub">Fator de subtracao: </label>
+    <input type="number" id="fatorSub" value="0" step="1">
+    <button onclick="aplicarSub()">Aplicar</button>
+  </div>
+
+  <div style="margin-top: 20px; text-align:center;">
+    <label for="yMax">Máx. Intensidade: </label>
+    <input type="number" id="yMax" value="70000" min="0" step="100">
+    <button onclick="setYMax()">Aplicar</button>
+  </div>
+
+  <div style="margin-top: 20px; text-align:center;">
+    <label for="integrationTime">Tempo de integração (µs): </label>
+    <input type="number" id="integrationTime" value="100000" min="100" step="1">
+    <button onclick="setIntegrationTime()">Aplicar</button>
+  </div>
+
+  <div style="margin-top: 20px; text-align:center;">
+    <button onclick="gerarTxtDoEspectro()">Gerar TXT do Espectro</button>
+    <button onclick="enviarComando('Start')">Start</button>
+    <button onclick="enviarComando('Pause')">Pause</button>
+  </div>
+
+  <br><br>
+
+  <script>
+    // Conecta ao servidor WebSocket
+    const socket = io();
+
+    socket.on("connect", () => {
+      console.log("✅ Conectado ao WebSocket");
+    });
+
+    socket.on("disconnect", () => {
+      console.log("❌ Desconectado do WebSocket");
+    });
+
+    function solicitarWavelengths() {
+      console.log("🔄 Solicitando wavelengths ao espectrômetro...");
+      socket.emit("comando_r2", { acao: "request_wavelengths" });
+    }
+
+    function setIntegrationTime() {
+      const valor = document.getElementById("integrationTime").value;
+      console.log("⏱️ Alterando tempo de integração para:", valor, "µs");
+      socket.emit("comando_r2", { acao: "set_integration:" + parseInt(valor) });
+    }
+
+    function setYMax() {
+      const valor = parseInt(document.getElementById("yMax").value);
+      if (!isNaN(valor)) {
+          graficoEspectro.options.scales.y.max = valor;
+          graficoEspectro.update();
+          console.log("📏 Novo limite máximo Y:", valor);
+      }
+    }
+
+function gerarTxtDoEspectro() {
+    const datasets = graficoEspectro.data.datasets;
+
+    datasets.forEach((ds, idx) => {
+        const data = ds.data;
+        if (!data.length) {
+            console.warn(`❌ Nenhum dado disponível no dataset: ${ds.label}`);
+            return;
+        }
+
+        // Cabeçalhos personalizados
+        let metaInfo = "";
+        if (idx === 0) {
+            // dataset Instantâneo
+            const integUs = parseInt(document.getElementById("integrationTime").value) || 0;
+            const integMs = (integUs / 1000).toFixed(2);
+            metaInfo = `Tempo de integração = ${integMs} ms\n`;
+        } else if (idx === 1) {
+            // dataset Acumulado
+            metaInfo = `Frames acumulados = ${framesParaSomar}\n`;
+            metaInfo += `Fator de subtração = ${sub}\n`;
+        }
+
+        const cabecalho = "Wavelength(nm) Intensities(Count)";
+        const linhas = data
+            .map(p => `${p.x.toFixed(2)} ${p.y.toFixed(2)}`)
+            .join("\n");
+
+        const conteudo = `${metaInfo}${cabecalho}\n${linhas}`;
+        const blob = new Blob([conteudo], { type: 'text/plain' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+
+        // nomes dos arquivos
+        link.download = idx === 0 ? "espectro.txt" : "espectro_X.txt";
+
+        link.click();
+        URL.revokeObjectURL(link.href);
+
+        console.log(`✅ TXT "${link.download}" gerado com ${data.length} pontos`);
+    });
+}
+
+const statusBtn = document.getElementById("statusBtn");
+
+function atualizarStatus(online) {
+  if (online) {
+    statusBtn.textContent = "Online";
+    statusBtn.style.background = "green";
+  } else {
+    statusBtn.textContent = "Offline";
+    statusBtn.style.background = "red";
+  }
+}
+
+function aplicarFaixa() {
+  faixaMin = parseFloat(document.getElementById("lambdaMin").value);
+  faixaMax = parseFloat(document.getElementById("lambdaMax").value);
+  framesParaSomar = parseInt(document.getElementById("framesSomar").value);
+  console.log(`⚙️ Config -> λ[${faixaMin}, ${faixaMax}], frames=${framesParaSomar}`);
+}
+
+function aplicarSub(){
+  sub = parseFloat(document.getElementById("fatorSub").value);
+  console.log("Fator sub:" + sub);
+}
+
+    // Dados e configuração do gráfico
+    const dadosTemp = {
+      labels: [],
+      datasets: [{
+        label: 'Temperatura (°C)',
+        borderColor: 'red',
+        data: [],
+        fill: false,
+        tension: 0.1
+      }]
+    };
+
+    const dadosPressao = {
+      labels: [],
+      datasets: [{
+        label: 'Pressao (Pa)',
+        borderColor: 'blue',
+        data: [],
+        fill: false,
+        tension: 0.1
+      }]
+    };
+
+    const dadosEspessura = {
+      labels: [],
+      datasets: [{
+        label: 'Espessura (Ang)',
+        borderColor: 'green',
+        data: [],
+        fill: false,
+        tension: 0.1
+      }]
+    };
+
+    const dadosTempAgua = {
+      labels: [],
+      datasets: [{
+        label: 'Temperatura da agua (°C)',
+        borderColor: 'orange',
+        data: [],
+        fill: false,
+        tension: 0.1
+      }]
+    };
+
+    const config = {
+      type: 'line',
+      data: dadosTemp,
+      options: {
+        responsive: false,
+        animation: false,
+        scales: {
+          x: { display: true, title: { display: true, text: 'Horário' }},
+          y: { display: true, title: { display: true, text: 'Temperatura (°C)' }}
+        }
+      }
+    };
+
+    const config2 = {
+      type: 'line',
+      data: dadosPressao,
+      options: {
+        responsive: false,
+        animation: false,
+        scales: {
+          x: { display: true, title: { display: true, text: 'Horário' }},
+          y: { display: true, title: { display: true, text: 'Pressao (Pa)' }}
+        }
+      }
+    };
+
+    const config3 = {
+      type: 'line',
+      data: dadosEspessura,
+      options: {
+        responsive: false,
+        animation: false,
+        scales: {
+          x: { display: true, title: { display: true, text: 'Horário' }},
+          y: { display: true, title: { display: true, text: 'Espessura (Ang)' }}
+        }
+      }
+    };
+
+    const config4 = {
+      type: 'line',
+      data: dadosTempAgua,
+      options: {
+        responsive: false,
+        animation: false,
+        scales: {
+          x: { display: true, title: { display: true, text: 'Horário' }},
+          y: { display: true, title: { display: true, text: 'Temperatura da agua(°C)' }}
+        }
+      }
+    };
+
+const config5 = {
+  type: 'line',
+  data: {
+      datasets: [
+        {
+          label: 'Intensidade Instantânea',
+          borderColor: 'rgb(75, 0, 130)',
+          backgroundColor: 'rgba(75, 0, 130, 0.1)',
+          data: [],
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 1
+        },
+        {
+          label: 'Intensidade Acumulada',
+          borderColor: 'rgb(255, 165, 0)', // cor diferente para distinguir
+          backgroundColor: 'rgba(255, 165, 0, 0.1)',
+          data: [],
+          fill: true,
+          tension: 0.3,
+          pointRadius: 0,
+          borderWidth: 1
+        }
+      ]
+  },
+  options: {
+      responsive: true,
+      animation: false,
+      scales: {
+          x: {
+              type: 'linear',
+              display: true,
+              title: {
+                  display: true,
+                  text: 'Comprimento de onda (nm)'
+              },
+              grid: { display: true }
+          },
+          y: {
+              display: true,
+              title: {
+                  display: true,
+                  text: 'Intensidade'
+              },
+              min: 1200,
+              max: 70000,
+              grid: { display: true }
+          }
+      },
+      plugins: {
+          legend: { display: true }, // agora aparece para ver os dois datasets
+          tooltip: { enabled: false }
+      }
+  }
+};
+
+    const graficoTemp = new Chart(document.getElementById("graficoTemp"), config);
+    const graficoPres = new Chart(document.getElementById("graficoPressao"), config2);
+    const graficoEspe = new Chart(document.getElementById("graficoEspe"), config3);
+    const graficoTempAgua = new Chart(document.getElementById("graficoTempAgua"), config4);
+    const graficoEspectro = new Chart(document.getElementById("graficoEspectro"), config5);
+
+    function decodeFloat32Array(binaryData) {
+      try {
+          let arrayBuffer;
+          if (binaryData instanceof ArrayBuffer) {
+              arrayBuffer = binaryData;
+          } else if (binaryData.buffer instanceof ArrayBuffer) {
+              arrayBuffer = binaryData.buffer;
+          } else {
+              arrayBuffer = new Uint8Array(binaryData).buffer;
+          }
+
+          return new Float32Array(arrayBuffer);
+      } catch (error) {
+          console.error("Erro ao decodificar dados:", error);
+          return new Float32Array(0);
+      }
+    }
+
+    let wavelengths = null;
+    let deviceType = null;
+    let lastUpdateTime = 0;
+    const minUpdateInterval = 100;
+
+let somaIntensidades = null;
+let contadorFrames = 0;
+let framesParaSomar = 2;
+let faixaMin = 400;
+let faixaMax = 700;
+let sub = 0;
+
+    // Atualização da temperatura
+    socket.on("temperatura_r2", (msg) => {
+      console.log("🔥 Temperatura recebida:", msg.valor);
+      document.getElementById("temp").textContent = msg.valor;
+
+      const hora = new Date().toLocaleTimeString();
+      dadosTemp.labels.push(hora);
+      dadosTemp.datasets[0].data.push(parseFloat(msg.valor));
+
+      if (dadosTemp.labels.length > 10) {
+        dadosTemp.labels.shift();
+        dadosTemp.datasets[0].data.shift();
+      }
+
+      graficoTemp.update();
+    });
+
+    // Atualização da pressão
+    socket.on("pressao_r2", (msg) => {
+      console.log("📦 Pressão recebida:", msg.valor);
+      document.getElementById("pressao").textContent = msg.valor;
+
+      const hora = new Date().toLocaleTimeString();
+      dadosPressao.labels.push(hora);
+      dadosPressao.datasets[0].data.push(parseFloat(msg.valor));
+
+      if (dadosPressao.labels.length > 10) {
+        dadosPressao.labels.shift();
+        dadosPressao.datasets[0].data.shift();
+      }
+
+      graficoPres.update();
+    });
+
+    socket.on("espessura_r2", (msg) => {
+      console.log("📏 Espessura recebida:", msg.valor);
+      document.getElementById("espessura").textContent = msg.valor;
+
+      const hora = new Date().toLocaleTimeString();
+      dadosEspessura.labels.push(hora);
+      dadosEspessura.datasets[0].data.push(parseFloat(msg.valor));
+
+      if (dadosEspessura.labels.length > 10) {
+        dadosEspessura.labels.shift();
+        dadosEspessura.datasets[0].data.shift();
+      }
+
+      graficoEspe.update();
+    });
+
+    socket.on("tempagua_r2", (msg) => {
+      console.log("💧 Temperatura água recebida:", msg.valor);
+      document.getElementById("tempagua").textContent = msg.valor;
+
+      const hora = new Date().toLocaleTimeString();
+      dadosTempAgua.labels.push(hora);
+      dadosTempAgua.datasets[0].data.push(parseFloat(msg.valor));
+
+      if (dadosTempAgua.labels.length > 10) {
+        dadosTempAgua.labels.shift();
+        dadosTempAgua.datasets[0].data.shift();
+      }
+
+      graficoTempAgua.update();
+    });
+
+    socket.on("espectrometro_r2_w", (data) => {
+      wavelengths = decodeFloat32Array(data);
+      console.log(`📥 Wavelengths recebidos (${wavelengths.length} pontos)`);
+      if (wavelengths.length > 0) {
+        graficoEspectro.options.scales.x.min = wavelengths[0];
+        graficoEspectro.options.scales.x.max = wavelengths[wavelengths.length - 1];
+        graficoEspectro.update();
+      }
+      atualizarStatus(true);
+    });
+
+socket.on("espectrometro_r2_int", (data) => {
+  const now = Date.now();
+  if (now - lastUpdateTime < minUpdateInterval) return;
+  lastUpdateTime = now;
+
+  try {
+    const intensities = decodeFloat32Array(data);
+    if (!wavelengths) {
+      solicitarWavelengths();
+      return;
+    }
+
+    if (!somaIntensidades) {
+      somaIntensidades = new Float32Array(intensities.length);
+      somaIntensidades.fill(0);
+      contadorFrames = 0;
+    }
+
+    contadorFrames++;
+
+    const instantaneo = [];
+    const acumulado = [];
+
+    const maxLength = Math.min(wavelengths.length, intensities.length);
+
+       for (let i = 0; i < maxLength; i++) {
+          const λ = wavelengths[i];
+
+          if (λ >= faixaMin && λ <= faixaMax) {
+            // acumula dentro da faixa
+            somaIntensidades[i] += intensities[i];
+
+            if (contadorFrames >= framesParaSomar) {
+              let diferenca = somaIntensidades[i] - sub;
+              acumulado.push({ x: λ, y: diferenca });
+            }
+
+            // ainda adiciona ao instantâneo para não deixar null
+            instantaneo.push({ x: λ, y: intensities[i] });
+          } else {
+            // fora da faixa → plota instantâneo
+            instantaneo.push({ x: λ, y: intensities[i] });
+          }
+        }
+
+
+    // Atualiza os datasets
+    graficoEspectro.data.datasets[0].data = instantaneo;
+    // só atualiza acumulado se tiver a soma pronta
+    if (contadorFrames >= framesParaSomar) {
+      const resultado = acumulado.map(item => ({
+        x: item.x,
+        y: item.y / (framesParaSomar)
+      }));
+      console.log(instantaneo);
+      console.log(acumulado);
+      console.log(resultado);
+      graficoEspectro.data.datasets[1].data = resultado;
+      somaIntensidades.fill(0);
+      contadorFrames = 0;
+      console.log(`📊 Soma da faixa [${faixaMin}, ${faixaMax}] plotada.`);
+    }
+
+    graficoEspectro.update('none');
+
+  } catch (error) {
+    console.error("❌ Erro ao processar intensidades:", error);
+  }
+});
+
+    // Enviar comandos de controle
+    function enviarComando(acao) {
+      console.log("🛰️ Enviando comando:", acao);
+      socket.emit("comando_r2", { acao });
+    }
+  </script>
+</body>
+</html>
