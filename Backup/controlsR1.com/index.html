@@ -2,13 +2,13 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Painel de Controle - Reator 2</title>
+  <title>Painel de Controle - Reator 1</title>
   <script src="socket.io.min.js"></script>
   <script src="chart.js"></script>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <h1>Monitoramento do Reator 2</h1>
+  <h1>Monitoramento do Reator 1</h1>
 
   <p><b>Temperatura:</b> <span id="temp">--</span> °C</p>
   <p><b>Pressão:</b> <span id="pressao">--</span> atm</p>
@@ -66,14 +66,6 @@
     <button onclick="enviarComando('Pause')">Pause</button>
   </div>
 
-  <div style="margin-top: 20px; text-align:center;">
-    <label for="modoTrigger"><b>Modo do Espectrômetro:</b></label>
-    <select id="modoTrigger" onchange="setModoTrigger()">
-      <option value="free">Free running</option>
-      <option value="external">Trigger externo</option>
-    </select>
-  </div>
-
   <br><br>
 
   <script>
@@ -90,27 +82,14 @@
 
     function solicitarWavelengths() {
       console.log("🔄 Solicitando wavelengths ao espectrômetro...");
-      socket.emit("comando_r2", { acao: "request_wavelengths" });
+      socket.emit("comando_r1", { acao: "request_wavelengths" });
     }
 
     function setIntegrationTime() {
       const valor = document.getElementById("integrationTime").value;
       console.log("⏱️ Alterando tempo de integração para:", valor, "µs");
-      socket.emit("comando_r2", { acao: "set_integration:" + parseInt(valor) });
+      socket.emit("comando_r1", { acao: "set_integration:" + parseInt(valor) });
     }
-
-    function setModoTrigger() {
-      const modo = document.getElementById("modoTrigger").value;
-
-      if (modo === "free") {
-        console.log("🔁 Setando modo FREE");
-        socket.emit("comando_r2", { acao: "set_trigger:free" });
-      } else if (modo === "external") {
-        console.log("⚡ Setando modo TRIGGER EXTERNO");
-        socket.emit("comando_r2", { acao: "set_trigger:external" });
-      }
-    }
-
 
     function setYMax() {
       const valor = parseInt(document.getElementById("yMax").value);
@@ -379,7 +358,7 @@ let faixaMax = 700;
 let sub = 0;
 
     // Atualização da temperatura
-    socket.on("temperatura_r2", (msg) => {
+    socket.on("temperatura_r1", (msg) => {
       console.log("🔥 Temperatura recebida:", msg.valor);
       document.getElementById("temp").textContent = msg.valor;
 
@@ -396,7 +375,7 @@ let sub = 0;
     });
 
     // Atualização da pressão
-    socket.on("pressao_r2", (msg) => {
+    socket.on("pressao_r1", (msg) => {
       console.log("📦 Pressão recebida:", msg.valor);
       document.getElementById("pressao").textContent = msg.valor;
 
@@ -412,7 +391,7 @@ let sub = 0;
       graficoPres.update();
     });
 
-    socket.on("espessura_r2", (msg) => {
+    socket.on("espessura_r1", (msg) => {
       console.log("📏 Espessura recebida:", msg.valor);
       document.getElementById("espessura").textContent = msg.valor;
 
@@ -428,7 +407,7 @@ let sub = 0;
       graficoEspe.update();
     });
 
-    socket.on("tempagua_r2", (msg) => {
+    socket.on("tempagua_r1", (msg) => {
       console.log("💧 Temperatura água recebida:", msg.valor);
       document.getElementById("tempagua").textContent = msg.valor;
 
@@ -444,7 +423,7 @@ let sub = 0;
       graficoTempAgua.update();
     });
 
-    socket.on("espectrometro_r2_w", (data) => {
+    socket.on("espectrometro_r1_w", (data) => {
       wavelengths = decodeFloat32Array(data);
       console.log(`📥 Wavelengths recebidos (${wavelengths.length} pontos)`);
       if (wavelengths.length > 0) {
@@ -455,7 +434,7 @@ let sub = 0;
       atualizarStatus(true);
     });
 
-socket.on("espectrometro_r2_int", (data) => {
+socket.on("espectrometro_r1_int", (data) => {
   const now = Date.now();
   if (now - lastUpdateTime < minUpdateInterval) return;
   lastUpdateTime = now;
@@ -528,7 +507,7 @@ socket.on("espectrometro_r2_int", (data) => {
     // Enviar comandos de controle
     function enviarComando(acao) {
       console.log("🛰️ Enviando comando:", acao);
-      socket.emit("comando_r2", { acao });
+      socket.emit("comando_r1", { acao });
     }
   </script>
 </body>

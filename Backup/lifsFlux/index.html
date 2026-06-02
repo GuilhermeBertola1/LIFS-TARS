@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Controle de Fluxômetro MKS</title>
+
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #111;
+    color: #eee;
+    margin: 20px;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.panel {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.channel {
+    background: #1c1c1c;
+    border-radius: 10px;
+    padding: 20px;
+    border: 2px solid #333;
+}
+
+.channel h2 {
+    margin-top: 0;
+}
+
+.status {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.off {
+    background: #a00;
+}
+
+.on {
+    background: #0a0;
+}
+
+button {
+    width: 100%;
+    padding: 10px;
+    font-size: 16px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+button.on {
+    background: #0a0;
+    color: #000;
+}
+
+button.off {
+    background: #a00;
+    color: #fff;
+}
+
+input {
+    width: 100%;
+    padding: 8px;
+    font-size: 16px;
+    margin-top: 10px;
+    border-radius: 5px;
+    border: none;
+}
+label {
+    font-size: 14px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Controle de Fluxômetro MKS (4 Canais)</h1>
+
+<div class="panel">
+
+<!-- CANAL 1 -->
+<div class="channel" id="ch1">
+    <h2>Canal 1</h2>
+    <div class="status off" id="status1">DESLIGADO</div>
+
+    <label>Fluxo (sccm)</label>
+    <input type="number" step="0.01" value="0.00" id="flow1">
+
+    <button class="off" onclick="toggleChannel(1)">LIGAR</button>
+</div>
+
+<!-- CANAL 2 -->
+<div class="channel" id="ch2">
+    <h2>Canal 2</h2>
+    <div class="status off" id="status2">DESLIGADO</div>
+
+    <label>Fluxo (sccm)</label>
+    <input type="number" step="0.01" value="0.00" id="flow2">
+
+    <button class="off" onclick="toggleChannel(2)">LIGAR</button>
+</div>
+
+<!-- CANAL 3 -->
+<!--
+<div class="channel" id="ch3">
+    <h2>Canal 3</h2>
+    <div class="status off" id="status3">DESLIGADO</div>
+
+    <label>Fluxo (sccm)</label>
+    <input type="number" step="0.01" value="0.00" id="flow3">
+
+    <button class="off" onclick="toggleChannel(3)">LIGAR</button>
+</div>-->
+
+<!-- CANAL 4 -->
+<!--<div class="channel" id="ch4">
+    <h2>Canal 4</h2>
+    <div class="status off" id="status4">DESLIGADO</div>
+
+    <label>Fluxo (sccm)</label>
+    <input type="number" step="0.01" value="0.00" id="flow4">
+
+    <button class="off" onclick="toggleChannel(4)">LIGAR</button>
+</div>-->
+
+</div>
+
+<script>
+let channelState = [false, false, false, false];
+
+function toggleChannel(ch) {
+    channelState[ch-1] = !channelState[ch-1];
+
+    const status = document.getElementById(`status${ch}`);
+    const button = document.querySelector(`#ch${ch} button`);
+    const flow = document.getElementById(`flow${ch}`).value;
+
+    if (channelState[ch-1]) {
+        status.textContent = "LIGADO";
+        status.className = "status on";
+        button.textContent = "DESLIGAR";
+        button.className = "on";
+
+        console.log(`CH${ch} ON | Fluxo = ${flow} sccm`);
+        // Aqui você envia comando para Arduino
+    } else {
+        status.textContent = "DESLIGADO";
+        status.className = "status off";
+        button.textContent = "LIGAR";
+        button.className = "off";
+
+        console.log(`CH${ch} OFF`);
+        // Aqui você envia comando OFF para Arduino
+    }
+}
+</script>
+
+</body>
+</html>
