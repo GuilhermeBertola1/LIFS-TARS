@@ -21,14 +21,14 @@ def on_message(client, userdata, msg):
     if comando == "ligar_r1":
         reator_ativo = "1"
         ligado = True
-        Start = True  # Garante que está em modo Start
+        Start = False  
         print(f"🎯 Espectrômetro agora enviando dados para Reator 1 (Ligado)")
         return
 
     if comando == "ligar_r2":
         reator_ativo = "2"
         ligado = True
-        Start = True  # Garante que está em modo Start
+        Start = False  
         print(f"🎯 Espectrômetro agora enviando dados para Reator 2 (Ligado)")
         return
 
@@ -38,13 +38,19 @@ def on_message(client, userdata, msg):
 
     if comando == "desligar":
         ligado = False
-        print(f"🔴 Espectrômetro desligado para Reator {reator_ativo}")
-    elif comando == "Start":
-        Start = True
-        print(f"▶️ Espectrômetro iniciado para Reator {reator_ativo}")
-    elif comando == "Pause":
         Start = False
-        print(f"⏸️ Espectrômetro pausado para Reator {reator_ativo}")
+        reator_ativo = None
+        print(f"🔴 Espectrômetro desligado")
+    elif comando == "Start":
+        if not ligado:
+            print("⚠️ Não é possível iniciar: espectrômetro desligado")
+        else:
+            Start = True
+    elif comando == "Pause":
+        if not ligado:
+            print("⚠️ Espectrômetro já está desligado")
+        else:
+            Start = False
     elif comando.startswith("set_integration:"):
         try:
             _, valor = comando.split(":")
@@ -60,13 +66,31 @@ def on_message(client, userdata, msg):
             print("📤 Wavelengths reenviados a pedido do frontend")
         except Exception as e:
             print(f"❌ Erro ao reenviar wavelengths: {e}")
+    elif comando.startswith("set_trigger"):
+        if ligado and Start:
+            print("⏸️ Pausando aquisição para trocar modo de trigger")
+            Start = False
+            time.sleep(0.2)  # garante que a leitura atual terminou
+
+        try:
+            if comando == "set_trigger:free":
+                spec.trigger_mode(0)
+                print("🔁 Modo do espectrômetro: FREE RUNNING")
+
+            elif comando == "set_trigger:external":
+                spec.trigger_mode(3)
+                print("⚡ Modo do espectrômetro: TRIGGER EXTERNO")
+
+        except Exception as e:
+            print(f"❌ Erro ao trocar modo de trigger: {e}")
+
 
 # Variáveis globais
 ligado = False
 setTemp = False
 micros = 100_000
-Start = True
-reator_ativo = "2"  # Default para Reator 2
+Start = False
+reator_ativo = None
 
 client = mqtt.Client()
 client.on_message = on_message

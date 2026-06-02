@@ -53,7 +53,7 @@ def handle_comando_r1(data):
         # também manda para o espectrômetro
         mqtt_client.publish("espectrometro/comando", acao + "_r1")
 
-    elif acao in ["Start", "Pause", "request_wavelengths"] or acao.startswith("set_integration"):
+    elif acao in ["Start", "Pause", "request_wavelengths"] or acao.startswith("set_integration") or acao.startswith("set_trigger"):
         # só espectrômetro
         mqtt_client.publish("espectrometro/comando", acao)
 
@@ -72,7 +72,7 @@ def handle_comando_r2(data):
         # também manda para o espectrômetro
         mqtt_client.publish("espectrometro/comando", acao + "_r2")
 
-    elif acao in ["Start", "Pause", "request_wavelengths"] or acao.startswith("set_integration"):
+    elif acao in ["Start", "Pause", "request_wavelengths"] or acao.startswith("set_integration") or acao.startswith("set_trigger"):
         # só espectrômetro
         mqtt_client.publish("espectrometro/comando", acao)
 

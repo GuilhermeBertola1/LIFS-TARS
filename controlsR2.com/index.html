@@ -66,6 +66,14 @@
     <button onclick="enviarComando('Pause')">Pause</button>
   </div>
 
+  <div style="margin-top: 20px; text-align:center;">
+    <label for="modoTrigger"><b>Modo do Espectrômetro:</b></label>
+    <select id="modoTrigger" onchange="setModoTrigger()">
+      <option value="free">Free running</option>
+      <option value="external">Trigger externo</option>
+    </select>
+  </div>
+
   <br><br>
 
   <script>
@@ -90,6 +98,19 @@
       console.log("⏱️ Alterando tempo de integração para:", valor, "µs");
       socket.emit("comando_r2", { acao: "set_integration:" + parseInt(valor) });
     }
+
+    function setModoTrigger() {
+      const modo = document.getElementById("modoTrigger").value;
+
+      if (modo === "free") {
+        console.log("🔁 Setando modo FREE");
+        socket.emit("comando_r2", { acao: "set_trigger:free" });
+      } else if (modo === "external") {
+        console.log("⚡ Setando modo TRIGGER EXTERNO");
+        socket.emit("comando_r2", { acao: "set_trigger:external" });
+      }
+    }
+
 
     function setYMax() {
       const valor = parseInt(document.getElementById("yMax").value);
