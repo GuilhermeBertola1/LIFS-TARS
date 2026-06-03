@@ -1,8 +1,8 @@
-# LIFS-TARS V2
+# LIFS-TARS
 
 ## Visão Geral
 
-O LIFS-TARS V2 é uma plataforma integrada para controle, monitoramento e aquisição de dados de reatores experimentais, combinando sistemas embarcados, comunicação MQTT, processamento espectral e interfaces web em tempo real.
+O LIFS-TARS é uma plataforma integrada para controle, monitoramento e aquisição de dados de reatores experimentais, combinando sistemas embarcados, comunicação MQTT, processamento espectral e interfaces web em tempo real.
 
 O sistema foi desenvolvido para permitir:
 
