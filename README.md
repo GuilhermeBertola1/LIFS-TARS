@@ -28,41 +28,80 @@ Toda a comunicação entre hardware e software passa por um **broker MQTT**; o n
 
 ## Arquitetura
 
-```text
-             ┌──────────────────────┐        ┌──────────────────────────┐
-             │ ESP32 / sensores dos │        │ Espectrômetro Ocean      │
-             │ reatores R1 e R2     │        │ Insight (USB)            │
-             └─────────┬────────────┘        └────────────┬─────────────┘
-       reator1/*  reator2/*                               │ pyseabreeze
-                       │                       ┌──────────▼─────────────┐
-                       │                       │ lifsEspec              │
-                       │                       │ espec_server2.py       │
-                       │                       └──────────┬─────────────┘
-                       ▼                                  │ reatorN/espectrometro_*
-             ┌─────────────────────────────────────────────▼──────────────┐
-             │              Broker MQTT  (192.168.0.100:1883)             │
-             └───────▲──────────────────────┬──────────────────▲──────────┘
-                     │ comandos              │ dados            │ teste/canal
-             ┌───────┴──────────────────────▼──────┐   ┌───────┴──────────┐
-             │ C_python  (Flask-SocketIO, :6000)   │   │ lifsflux         │
-             │ ponte MQTT ⇄ Socket.IO              │   │ controlFlux.py   │
-             └───────────────────┬─────────────────┘   └───────┬──────────┘
-                                 │ WebSocket                   │ serial 9600
-                                 ▼                             ▼
-   ┌─────────────────────────────────────────────┐     Fluxômetro MKS (4 canais)
-   │                Nginx  (192.168.0.101)       │
-   │  :120 controlsR1.com    :130 controlsR2.com │
-   │  :105 intel.com  ── /api ──► S_python       │
-   │  IntelMain.com (portal com iframe)          │
-   └─────────────────────────────────────────────┘
-                                 │
-                       S_python (Flask + FPDF)
-                       └─► discos /srv/... (REATOR_1, REATOR_2, REPOSITORIO_SEC)
+```mermaid
+flowchart TB
+    subgraph HW["🔧 Hardware do laboratório"]
+        ESP["ESP32 + sensores<br/>Reatores R1 e R2"]
+        SPEC["Espectrômetro<br/>Ocean Insight (USB)"]
+        MKS["Fluxômetro MKS<br/>4 canais"]
+    end
+
+    subgraph BROKER["📡 Broker MQTT · 192.168.0.100:1883"]
+        MQTT{{"Mosquitto"}}
+    end
+
+    subgraph PY["🐍 Serviços Python"]
+        ESPEC["lifsEspec<br/>espec_server2.py"]
+        FLUX["lifsflux<br/>controlFlux.py"]
+        CPY["C_python<br/>ponte MQTT ⇄ Socket.IO<br/>Flask-SocketIO :6000"]
+        SPY["S_python<br/>relatórios e arquivos<br/>Flask + FPDF :5000"]
+    end
+
+    subgraph WEB["🌐 Nginx · 192.168.0.101"]
+        MAIN["IntelMain.com<br/>portal com iframe"]
+        R1["controlsR1.com<br/>:120"]
+        R2["controlsR2.com<br/>:130"]
+        INTEL["intel.com<br/>:105"]
+    end
+
+    DISK[("💾 Discos /srv<br/>REATOR_1 · REATOR_2<br/>REPOSITORIO_SEC")]
+    USER(["👤 Navegador"])
+
+    ESP -- "reator1/* · reator2/*" --> MQTT
+    MQTT -- "reatorN/comando" --> ESP
+    SPEC -- "pyseabreeze" --> ESPEC
+    ESPEC -- "reatorN/espectrometro_w<br/>reatorN/espectrometro_int" --> MQTT
+    MQTT -- "espectrometro/comando" --> ESPEC
+    MQTT -- "teste/canal" --> FLUX
+    FLUX -- "serial 9600 baud" --> MKS
+    MQTT <-- "dados ⇄ comandos" --> CPY
+    CPY <-- "WebSocket" --> R1
+    CPY <-- "WebSocket" --> R2
+    INTEL -- "/api" --> SPY
+    SPY --> DISK
+    USER --> MAIN
+    MAIN -. iframe .-> R1
+    MAIN -. iframe .-> R2
+    MAIN -. iframe .-> INTEL
 ```
 
-**Fluxo de dados (leitura):** sensor/ESP32 → MQTT `reatorN/<grandeza>` → `C_python` → evento Socket.IO `<grandeza>_rN` → dashboard → gráfico Chart.js.
+### Fluxo de leitura e de comandos
 
-**Fluxo de comandos (escrita):** botão no dashboard → `socket.emit("comando_rN")` → `C_python` decide o destino → MQTT `reatorN/comando` (ESP32) e/ou `espectrometro/comando` (espectrômetro).
+```mermaid
+sequenceDiagram
+    autonumber
+    participant ESP as ESP32 / lifsEspec
+    participant MQ as Broker MQTT
+    participant CP as C_python
+    participant UI as Dashboard (navegador)
+
+    Note over ESP,UI: Leitura de dados
+    ESP->>MQ: publica reatorN/temperatura, pressao, espessura, tempagua...
+    MQ->>CP: entrega a mensagem
+    CP->>UI: emite evento grandeza_rN
+    UI->>UI: atualiza valor e gráfico (Chart.js)
+
+    Note over ESP,UI: Envio de comandos
+    UI->>CP: socket.emit("comando_rN", {acao})
+    alt ligar / desligar
+        CP->>MQ: reatorN/comando + espectrometro/comando
+    else Start, Pause, set_integration, set_trigger, request_wavelengths
+        CP->>MQ: espectrometro/comando
+    else qualquer outra ação
+        CP->>MQ: reatorN/comando
+    end
+    MQ->>ESP: entrega o comando
+```
 
 ---
 
